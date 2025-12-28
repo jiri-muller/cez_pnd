@@ -21,8 +21,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "f7bc6fe-2025-12-28"
-_LOGGER.info("ČEZ PND API version: %s", API_VERSION)
+API_VERSION = "9187008-2025-12-28"
+_LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
 class CezPndApi:
@@ -54,7 +54,7 @@ class CezPndApi:
                 cookie_jar=cookie_jar,
                 timeout=timeout,
             )
-            _LOGGER.info("✅ Created new aiohttp session with CookieJar (API version: %s)", API_VERSION)
+            _LOGGER.error("✅ Created new aiohttp session with CookieJar (API version: %s)", API_VERSION)
         return self.session
 
     async def async_authenticate(self) -> bool:
@@ -63,7 +63,7 @@ class CezPndApi:
             import re
 
             # Ensure we have a session
-            _LOGGER.info("🔐 Starting authentication (API version: %s)", API_VERSION)
+            _LOGGER.error("🔐 Starting authentication (API version: %s)", API_VERSION)
             session = await self._ensure_session()
 
             # Step 1: Get the OAuth2 authorization URL to be redirected to CAS login
