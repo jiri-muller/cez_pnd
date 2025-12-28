@@ -122,14 +122,19 @@ class CezPndApi:
 
     async def async_get_data(self) -> dict[str, Any]:
         """Fetch data from the PND portal."""
+        # Ensure we're authenticated first
+        if not self._cookies:
+            _LOGGER.debug("No session cookies found, authenticating...")
+            await self.async_authenticate()
+
         # Get yesterday's data (since today's data might not be available yet)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=1)
 
-        # Format dates as required by the API
+        # Format dates as required by the API (full day)
         date_format = "%d.%m.%Y %H:%M"
-        interval_from = start_date.strftime(date_format).replace(" 00:00", " 00:00")
-        interval_to = end_date.strftime(date_format).replace(" 00:00", " 00:00")
+        interval_from = start_date.replace(hour=0, minute=0, second=0).strftime(date_format)
+        interval_to = start_date.replace(hour=23, minute=59, second=59).strftime(date_format)
 
         _LOGGER.debug(
             "Fetching data from %s to %s",
@@ -176,23 +181,48 @@ class CezPndApi:
         }
 
         try:
+            _LOGGER.debug("Fetching data for assembly %s", id_assembly)
             async with self.session.post(
                 API_DATA_URL,
                 json=payload,
                 allow_redirects=True,
             ) as response:
+                _LOGGER.debug("Response status: %s, URL: %s", response.status, response.url)
+
                 if response.status == 401 or "login" in str(response.url).lower():
                     # Session expired, re-authenticate
                     _LOGGER.info("Session expired, re-authenticating")
+                    self._cookies = {}  # Clear old cookies
                     await self.async_authenticate()
 
                     # Retry the request
+                    _LOGGER.debug("Retrying data fetch after re-authentication")
                     async with self.session.post(
                         API_DATA_URL,
                         json=payload,
                     ) as retry_response:
                         retry_response.raise_for_status()
-                        return await retry_response.json()
+                        data = await retry_response.json()
+                        _LOGGER.debug("Retry successful, received data")
+                        # Process the retry response
+                        if data.get("hasData") and data.get("series"):
+                            series = data["series"][0]
+                            stats = data["seriesStats"][0] if data.get("seriesStats") else {}
+                            last_value = 0.0
+                            if series.get("data") and len(series["data"]) > 0:
+                                last_data_point = series["data"][-1]
+                                if len(last_data_point) >= 2:
+                                    last_value = float(last_data_point[1])
+                            return {
+                                "value": last_value,
+                                "total": self._parse_czech_number(stats.get("total", "0")),
+                                "min": self._parse_czech_number(stats.get("min", "0")),
+                                "max": self._parse_czech_number(stats.get("max", "0")),
+                                "name": series.get("name", ""),
+                                "unit": data.get("unitY", "kWh"),
+                                "date_from": stats.get("dateFrom", ""),
+                                "date_to": stats.get("dateTo", ""),
+                            }
 
                 response.raise_for_status()
                 data = await response.json()
@@ -233,8 +263,21 @@ class CezPndApi:
                     "date_to": "",
                 }
 
+        except aiohttp.ClientError as err:
+            _LOGGER.error(
+                "Network error fetching data for assembly %s: %s (type: %s)",
+                id_assembly,
+                err,
+                type(err).__name__,
+            )
+            raise
         except Exception as err:
-            _LOGGER.error("Error fetching data for assembly %s: %s", id_assembly, err)
+            _LOGGER.error(
+                "Error fetching data for assembly %s: %s (type: %s)",
+                id_assembly,
+                err,
+                type(err).__name__,
+            )
             raise
 
     @staticmethod
