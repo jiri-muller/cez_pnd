@@ -7,6 +7,6 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/yourusername/ha-cez-pnd/issues",
-  "requirements": ["aiohttp>=3.8.0"],
-  "version": "0.1.0"
+  "requirements": ["requests>=2.28.0", "beautifulsoup4>=4.11.0"],
+  "version": "0.2.0"
 }

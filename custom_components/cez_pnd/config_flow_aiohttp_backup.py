@@ -1,4 +1,4 @@
-"""Config flow for ČEZ Distribuce PND integration using requests."""
+"""Config flow for ČEZ Distribuce PND integration."""
 from __future__ import annotations
 
 import logging
@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .api_requests import CezPndApi
+from .api import CezPndApi
 from .const import DEFAULT_DEVICE_ID, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,13 +28,12 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
-    api = CezPndApi(data[CONF_USERNAME], data[CONF_PASSWORD], data.get("device_id", DEFAULT_DEVICE_ID))
+    api = CezPndApi(data[CONF_USERNAME], data[CONF_PASSWORD], data.get("device_id", DEFAULT_DEVICE_ID), hass)
 
     try:
-        # Run synchronous authentication in executor
-        result = await hass.async_add_executor_job(api.authenticate)
+        result = await api.async_authenticate()
         if not result:
-            _LOGGER.error("Authentication failed: authenticate returned False")
+            _LOGGER.error("Authentication failed: async_authenticate returned False")
             raise InvalidAuth("Authentication failed")
     except InvalidAuth:
         raise
@@ -43,7 +42,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise InvalidAuth from err
     finally:
         # Close the session after validation
-        await hass.async_add_executor_job(api.close)
+        await api.async_close()
 
     return {"title": f"ČEZ PND ({data[CONF_USERNAME]})"}
 

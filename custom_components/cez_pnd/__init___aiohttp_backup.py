@@ -1,4 +1,4 @@
-"""The ČEZ Distribuce PND integration using requests."""
+"""The ČEZ Distribuce PND integration."""
 from __future__ import annotations
 
 import logging
@@ -9,7 +9,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api_requests import CezPndApi
+from .api import CezPndApi
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -25,13 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     password = entry.data[CONF_PASSWORD]
     device_id = entry.data.get("device_id", "")
 
-    api = CezPndApi(username, password, device_id)
+    api = CezPndApi(username, password, device_id, hass)
 
     async def async_update_data():
-        """Fetch data from API running in executor."""
+        """Fetch data from API."""
         try:
-            # Run synchronous API call in executor
-            return await hass.async_add_executor_job(api.get_data)
+            return await api.async_get_data()
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
@@ -61,7 +60,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         # Close the API session
         api = hass.data[DOMAIN][entry.entry_id]["api"]
-        await hass.async_add_executor_job(api.close)
+        await api.async_close()
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
