@@ -172,13 +172,23 @@ class CezPndApi:
             yesterday_to,
         )
 
-        return {
+        result = {
             "consumption_today": consumption_today,
             "consumption_yesterday": consumption_yesterday,
             "production_today": production_today,
             "production_yesterday": production_yesterday,
             "last_update": datetime.now().isoformat(),
         }
+
+        _LOGGER.info(
+            "Data fetched successfully: consumption_today=%s, consumption_yesterday=%s, production_today=%s, production_yesterday=%s",
+            consumption_today.get("total", "N/A"),
+            consumption_yesterday.get("total", "N/A"),
+            production_today.get("total", "N/A"),
+            production_yesterday.get("total", "N/A"),
+        )
+
+        return result
 
     def _fetch_data(
         self,

@@ -83,17 +83,23 @@ class CezPndSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}"
         self._attr_icon = icon
         self._attr_device_class = SensorDeviceClass.ENERGY
-        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_state_class = SensorStateClass.TOTAL
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
 
     @property
     def native_value(self) -> float | None:
         """Return the state of the sensor."""
         if self.coordinator.data is None:
+            _LOGGER.warning(f"Sensor {self._sensor_type}: coordinator.data is None")
             return None
 
         data = self.coordinator.data.get(self._sensor_type, {})
-        return data.get("total", 0.0)
+        if not data:
+            _LOGGER.warning(f"Sensor {self._sensor_type}: No data in coordinator for this sensor type. Available keys: {list(self.coordinator.data.keys())}")
+
+        total = data.get("total", 0.0)
+        _LOGGER.debug(f"Sensor {self._sensor_type}: native_value = {total}")
+        return total
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
