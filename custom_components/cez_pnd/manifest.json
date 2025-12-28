@@ -1,0 +1,12 @@
+{
+  "domain": "cez_pnd",
+  "name": "ČEZ Distribuce PND",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/yourusername/ha-cez-pnd",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/yourusername/ha-cez-pnd/issues",
+  "requirements": ["aiohttp>=3.8.0"],
+  "version": "0.1.0"
+}
