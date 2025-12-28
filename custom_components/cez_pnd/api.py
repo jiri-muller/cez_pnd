@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v0.1.6-visit-dashboard"
+API_VERSION = "v0.1.7-check-headers"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -146,7 +146,13 @@ class CezPndApi:
                 allow_redirects=True,
             ) as response:
                 _LOGGER.error("📊 Dashboard response: status=%s, final_url=%s (API version: %s)", response.status, response.url, API_VERSION)
-                # Don't check for redirect - just establish the session
+                # Extract any tokens or additional cookies
+                _LOGGER.error("🍪 Cookies after dashboard: %d (API version: %s)", len(session.cookie_jar), API_VERSION)
+
+                # Log response headers to see if there are any special headers we need
+                for header_name in ['X-Request-Token', 'X-CSRF-Token', 'Set-Cookie']:
+                    if header_name in response.headers:
+                        _LOGGER.error("📋 Header %s: %s (API version: %s)", header_name, response.headers[header_name][:100], API_VERSION)
 
             # Authentication successful if we reached ČEZ domain
             _LOGGER.error("✅ Authentication successful - session established (API version: %s)", API_VERSION)
