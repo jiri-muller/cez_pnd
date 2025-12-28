@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v0.1.3-session-cleanup"
+API_VERSION = "v0.1.4-manual-cookies"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -224,13 +224,30 @@ class CezPndApi:
 
         try:
             _LOGGER.error("📊 Fetching data for assembly %s (API version: %s)", id_assembly, API_VERSION)
-            _LOGGER.error("🍪 Session has %d cookies (API version: %s)", len(session.cookie_jar), API_VERSION)
+
+            # Manually build Cookie header from session cookies for pnd.cezdistribuce.cz
+            from http.cookies import SimpleCookie
+            from urllib.parse import urlparse
+
+            target_domain = urlparse(API_DATA_URL).hostname
+            cookie_header = []
             for cookie in session.cookie_jar:
-                _LOGGER.error("🍪 Cookie: %s for domain %s", cookie.key, cookie.get('domain', 'no-domain'))
+                # Check if cookie applies to our target domain
+                cookie_domain = cookie.get('domain', '')
+                if cookie_domain and (target_domain.endswith(cookie_domain) or cookie_domain.endswith(target_domain)):
+                    cookie_header.append(f"{cookie.key}={cookie.value}")
+
+            headers = {}
+            if cookie_header:
+                headers['Cookie'] = '; '.join(cookie_header)
+                _LOGGER.error("🍪 Sending %d cookies in header (API version: %s)", len(cookie_header), API_VERSION)
+            else:
+                _LOGGER.error("⚠️ No cookies to send! (API version: %s)", API_VERSION)
 
             async with session.post(
                 API_DATA_URL,
                 json=payload,
+                headers=headers,
                 allow_redirects=False,
             ) as response:
                 _LOGGER.error("📊 Data response: status=%s, url=%s (API version: %s)", response.status, response.url, API_VERSION)
