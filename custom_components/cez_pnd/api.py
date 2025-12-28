@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "skip-dashboard-2025-12-28"
+API_VERSION = "fix-post-redirects-2025-12-28"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -217,14 +217,12 @@ class CezPndApi:
         }
 
         try:
-            _LOGGER.debug("Fetching data for assembly %s", id_assembly)
+            _LOGGER.error("📊 Fetching data for assembly %s (API version: %s)", id_assembly, API_VERSION)
             async with session.post(
                 API_DATA_URL,
                 json=payload,
-                allow_redirects=True,
-                max_redirects=10,
             ) as response:
-                _LOGGER.debug("Response status: %s, URL: %s", response.status, response.url)
+                _LOGGER.error("📊 Data response: status=%s, url=%s (API version: %s)", response.status, response.url, API_VERSION)
 
                 if response.status == 401 or "login" in str(response.url).lower():
                     # Session expired, re-authenticate
@@ -264,6 +262,7 @@ class CezPndApi:
                 response.raise_for_status()
                 data = await response.json()
 
+                _LOGGER.error("✅ Data received successfully (API version: %s)", API_VERSION)
                 _LOGGER.debug("Received data: %s", data)
 
                 # Extract the relevant information
