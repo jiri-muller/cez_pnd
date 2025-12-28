@@ -129,38 +129,54 @@ class CezPndApi:
             if not self.authenticate():
                 raise Exception("Authentication failed")
 
-        # Get yesterday's data (since today's data might not be available yet)
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=1)
-
-        # Format dates as required by the API (full day)
+        now = datetime.now()
         date_format = "%d.%m.%Y %H:%M"
-        interval_from = start_date.replace(hour=0, minute=0, second=0).strftime(date_format)
-        interval_to = start_date.replace(hour=23, minute=59, second=59).strftime(date_format)
 
-        _LOGGER.debug(
-            "Fetching data from %s to %s",
-            interval_from,
-            interval_to,
-        )
+        # Get today's data
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_from = today.strftime(date_format)
+        today_to = now.replace(hour=23, minute=59, second=59).strftime(date_format)
 
-        # Fetch consumption data
-        consumption_data = self._fetch_data(
+        _LOGGER.debug("Fetching today's data from %s to %s", today_from, today_to)
+
+        # Fetch today's consumption and production data
+        consumption_today = self._fetch_data(
             ID_ASSEMBLY_CONSUMPTION,
-            interval_from,
-            interval_to,
+            today_from,
+            today_to,
         )
 
-        # Fetch production data
-        production_data = self._fetch_data(
+        production_today = self._fetch_data(
             ID_ASSEMBLY_PRODUCTION,
-            interval_from,
-            interval_to,
+            today_from,
+            today_to,
+        )
+
+        # Get yesterday's data
+        yesterday = today - timedelta(days=1)
+        yesterday_from = yesterday.strftime(date_format)
+        yesterday_to = yesterday.replace(hour=23, minute=59, second=59).strftime(date_format)
+
+        _LOGGER.debug("Fetching yesterday's data from %s to %s", yesterday_from, yesterday_to)
+
+        # Fetch yesterday's consumption and production data
+        consumption_yesterday = self._fetch_data(
+            ID_ASSEMBLY_CONSUMPTION,
+            yesterday_from,
+            yesterday_to,
+        )
+
+        production_yesterday = self._fetch_data(
+            ID_ASSEMBLY_PRODUCTION,
+            yesterday_from,
+            yesterday_to,
         )
 
         return {
-            "consumption": consumption_data,
-            "production": production_data,
+            "consumption_today": consumption_today,
+            "consumption_yesterday": consumption_yesterday,
+            "production_today": production_today,
+            "production_yesterday": production_yesterday,
             "last_update": datetime.now().isoformat(),
         }
 

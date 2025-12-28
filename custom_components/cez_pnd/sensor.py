@@ -35,15 +35,29 @@ async def async_setup_entry(
         CezPndSensor(
             coordinator,
             config_entry,
-            "consumption",
-            "Energy Consumption",
+            "consumption_today",
+            "Consumption Today",
             "mdi:transmission-tower",
         ),
         CezPndSensor(
             coordinator,
             config_entry,
-            "production",
-            "Energy Production",
+            "consumption_yesterday",
+            "Consumption Yesterday",
+            "mdi:transmission-tower",
+        ),
+        CezPndSensor(
+            coordinator,
+            config_entry,
+            "production_today",
+            "Production Today",
+            "mdi:solar-power",
+        ),
+        CezPndSensor(
+            coordinator,
+            config_entry,
+            "production_yesterday",
+            "Production Yesterday",
             "mdi:solar-power",
         ),
     ]
