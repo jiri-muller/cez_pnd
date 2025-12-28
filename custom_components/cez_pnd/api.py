@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "debug-cookies-2025-12-28"
+API_VERSION = "v0.1.3-session-cleanup"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -56,6 +56,12 @@ class CezPndApi:
             )
             _LOGGER.error("✅ Created new aiohttp session with CookieJar (API version: %s)", API_VERSION)
         return self.session
+
+    async def async_close(self) -> None:
+        """Close the aiohttp session."""
+        if self.session and not self.session.closed:
+            await self.session.close()
+            _LOGGER.debug("Closed aiohttp session")
 
     async def async_authenticate(self) -> bool:
         """Authenticate with the PND portal."""

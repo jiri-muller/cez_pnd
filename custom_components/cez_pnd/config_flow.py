@@ -40,6 +40,9 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     except Exception as err:
         _LOGGER.error("Authentication failed: %s", err)
         raise InvalidAuth from err
+    finally:
+        # Close the session after validation
+        await api.async_close()
 
     return {"title": f"ČEZ PND ({data[CONF_USERNAME]})"}
 
