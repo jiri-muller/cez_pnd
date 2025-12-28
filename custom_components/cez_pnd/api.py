@@ -36,19 +36,36 @@ class CezPndApi:
         self.password = password
         self.device_id = device_id
         self.hass = hass
-        self.session: ClientSession = async_get_clientsession(hass)
+        # Use our own session instead of HA's shared session to avoid cookie/redirect issues
+        self.session: ClientSession | None = None
         self._cookies: dict[str, Any] = {}
+
+    async def _ensure_session(self) -> ClientSession:
+        """Ensure we have an active session."""
+        if self.session is None or self.session.closed:
+            # Create our own session with proper cookie handling
+            cookie_jar = aiohttp.CookieJar(unsafe=True)
+            timeout = aiohttp.ClientTimeout(total=30)
+            self.session = aiohttp.ClientSession(
+                cookie_jar=cookie_jar,
+                timeout=timeout,
+            )
+            _LOGGER.debug("Created new aiohttp session")
+        return self.session
 
     async def async_authenticate(self) -> bool:
         """Authenticate with the PND portal."""
         try:
             import re
 
+            # Ensure we have a session
+            session = await self._ensure_session()
+
             # Step 1: Get the OAuth2 authorization URL to be redirected to CAS login
             _LOGGER.debug("Starting OAuth2 flow")
             _LOGGER.debug("Requesting: %s/oauth2/authorization/mepas-external", API_BASE_URL)
 
-            async with self.session.get(
+            async with session.get(
                 f"{API_BASE_URL}/oauth2/authorization/mepas-external",
                 allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=30),
@@ -84,7 +101,7 @@ class CezPndApi:
             }
 
             _LOGGER.debug("Attempting login to CAS")
-            async with self.session.post(
+            async with session.post(
                 service_url,
                 data=login_data,
                 headers=headers,
@@ -108,11 +125,11 @@ class CezPndApi:
                 _LOGGER.debug("Login successful, redirected to: %s", response.url)
 
                 # Store cookies for subsequent requests
-                self._cookies = {cookie.key: cookie.value for cookie in self.session.cookie_jar}
+                self._cookies = {cookie.key: cookie.value for cookie in session.cookie_jar}
                 _LOGGER.debug("Stored %d cookies", len(self._cookies))
 
             # Step 3: Verify authentication by trying to access the dashboard
-            async with self.session.get(
+            async with session.get(
                 f"{API_BASE_URL}/external/dashboard/view",
                 allow_redirects=True,
             ) as response:
@@ -188,6 +205,8 @@ class CezPndApi:
         interval_to: str,
     ) -> dict[str, Any]:
         """Fetch data for a specific assembly ID."""
+        session = await self._ensure_session()
+
         payload = {
             "format": "chart",
             "idAssembly": id_assembly,
@@ -201,7 +220,7 @@ class CezPndApi:
 
         try:
             _LOGGER.debug("Fetching data for assembly %s", id_assembly)
-            async with self.session.post(
+            async with session.post(
                 API_DATA_URL,
                 json=payload,
                 allow_redirects=True,
@@ -217,7 +236,7 @@ class CezPndApi:
 
                     # Retry the request
                     _LOGGER.debug("Retrying data fetch after re-authentication")
-                    async with self.session.post(
+                    async with session.post(
                         API_DATA_URL,
                         json=payload,
                     ) as retry_response:
