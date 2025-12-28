@@ -18,7 +18,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v0.2.0-requests"
+API_VERSION = "v0.2.2-today-yesterday"
 _LOGGER.info("ČEZ PND API version: %s", API_VERSION)
 
 
