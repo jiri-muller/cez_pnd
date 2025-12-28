@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "fix-post-redirects-2025-12-28"
+API_VERSION = "disable-post-redirects-2025-12-28"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -221,6 +221,7 @@ class CezPndApi:
             async with session.post(
                 API_DATA_URL,
                 json=payload,
+                allow_redirects=False,
             ) as response:
                 _LOGGER.error("📊 Data response: status=%s, url=%s (API version: %s)", response.status, response.url, API_VERSION)
 
