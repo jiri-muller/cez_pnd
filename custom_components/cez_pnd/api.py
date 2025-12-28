@@ -91,14 +91,18 @@ class CezPndApi:
                 _LOGGER.debug("Login response URL: %s", response.url)
 
                 # Check if we're still on login page (authentication failed)
-                if "login" in str(response.url).lower() and response.status != 200:
+                final_url = str(response.url).lower()
+                if "login" in final_url and response.status != 200:
                     _LOGGER.error("Login failed with status %s", response.status)
                     return False
 
-                # Check if redirected back to PND (successful login)
-                if "pnd.cezdistribuce.cz" not in str(response.url).lower():
+                # Check if redirected to ČEZ domain (successful login)
+                # Both dip.cezdistribuce.cz and pnd.cezdistribuce.cz are valid
+                if "cezdistribuce.cz" not in final_url:
                     _LOGGER.error("Unexpected redirect after login: %s", response.url)
                     return False
+
+                _LOGGER.debug("Login successful, redirected to: %s", response.url)
 
                 # Store cookies for subsequent requests
                 self._cookies = {cookie.key: cookie.value for cookie in self.session.cookie_jar}
@@ -186,6 +190,7 @@ class CezPndApi:
                 API_DATA_URL,
                 json=payload,
                 allow_redirects=True,
+                max_redirects=10,
             ) as response:
                 _LOGGER.debug("Response status: %s, URL: %s", response.status, response.url)
 
