@@ -46,9 +46,12 @@ class CezPndApi:
 
             # Step 1: Get the OAuth2 authorization URL to be redirected to CAS login
             _LOGGER.debug("Starting OAuth2 flow")
+            _LOGGER.debug("Requesting: %s/oauth2/authorization/mepas-external", API_BASE_URL)
+
             async with self.session.get(
                 f"{API_BASE_URL}/oauth2/authorization/mepas-external",
                 allow_redirects=True,
+                timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 service_url = str(response.url)
                 html = await response.text()
@@ -120,8 +123,20 @@ class CezPndApi:
                 _LOGGER.info("Authentication successful")
                 return True
 
+        except aiohttp.ClientError as err:
+            _LOGGER.error(
+                "Network error during authentication: %s (type: %s, URL: %s)",
+                err,
+                type(err).__name__,
+                API_BASE_URL,
+            )
+            raise
         except Exception as err:
-            _LOGGER.error("Authentication error: %s", err)
+            _LOGGER.error(
+                "Authentication error: %s (type: %s)",
+                err,
+                type(err).__name__,
+            )
             raise
 
     async def async_get_data(self) -> dict[str, Any]:
