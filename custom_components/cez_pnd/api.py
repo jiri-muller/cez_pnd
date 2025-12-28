@@ -137,40 +137,21 @@ class CezPndApi:
         today_from = today.strftime(date_format)
         today_to = now.replace(hour=23, minute=59, second=59).strftime(date_format)
 
-        _LOGGER.debug("Fetching today's data from %s to %s", today_from, today_to)
-
-        # Fetch today's consumption and production data
-        consumption_today = self._fetch_data(
-            ID_ASSEMBLY_CONSUMPTION,
-            today_from,
-            today_to,
-        )
-
-        production_today = self._fetch_data(
-            ID_ASSEMBLY_PRODUCTION,
-            today_from,
-            today_to,
-        )
-
         # Get yesterday's data
         yesterday = today - timedelta(days=1)
         yesterday_from = yesterday.strftime(date_format)
         yesterday_to = yesterday.replace(hour=23, minute=59, second=59).strftime(date_format)
 
+        _LOGGER.debug("Fetching today's data from %s to %s", today_from, today_to)
         _LOGGER.debug("Fetching yesterday's data from %s to %s", yesterday_from, yesterday_to)
 
-        # Fetch yesterday's consumption and production data
-        consumption_yesterday = self._fetch_data(
-            ID_ASSEMBLY_CONSUMPTION,
-            yesterday_from,
-            yesterday_to,
-        )
+        # Fetch today's data
+        consumption_today = self._fetch_data(ID_ASSEMBLY_CONSUMPTION, today_from, today_to)
+        production_today = self._fetch_data(ID_ASSEMBLY_PRODUCTION, today_from, today_to)
 
-        production_yesterday = self._fetch_data(
-            ID_ASSEMBLY_PRODUCTION,
-            yesterday_from,
-            yesterday_to,
-        )
+        # Fetch yesterday's data
+        consumption_yesterday = self._fetch_data(ID_ASSEMBLY_CONSUMPTION, yesterday_from, yesterday_to)
+        production_yesterday = self._fetch_data(ID_ASSEMBLY_PRODUCTION, yesterday_from, yesterday_to)
 
         result = {
             "consumption_today": consumption_today,
@@ -181,10 +162,10 @@ class CezPndApi:
         }
 
         _LOGGER.info(
-            "Data fetched successfully: consumption_today=%s, consumption_yesterday=%s, production_today=%s, production_yesterday=%s",
+            "Data fetched: today cons=%s prod=%s, yesterday cons=%s prod=%s",
             consumption_today.get("total", "N/A"),
-            consumption_yesterday.get("total", "N/A"),
             production_today.get("total", "N/A"),
+            consumption_yesterday.get("total", "N/A"),
             production_yesterday.get("total", "N/A"),
         )
 
