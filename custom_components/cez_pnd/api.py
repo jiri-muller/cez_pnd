@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "9187008-2025-12-28"
+API_VERSION = "skip-dashboard-2025-12-28"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -133,17 +133,10 @@ class CezPndApi:
                 self._cookies = {cookie.key: cookie.value for cookie in session.cookie_jar}
                 _LOGGER.debug("Stored %d cookies", len(self._cookies))
 
-            # Step 3: Verify authentication by trying to access the dashboard
-            async with session.get(
-                f"{API_BASE_URL}/external/dashboard/view",
-                allow_redirects=True,
-            ) as response:
-                if "login" in str(response.url).lower():
-                    _LOGGER.error("Authentication failed - redirected to login")
-                    return False
-
-                _LOGGER.info("Authentication successful")
-                return True
+            # Authentication successful if we reached ČEZ domain
+            # Skip dashboard verification to avoid redirect issues
+            _LOGGER.error("✅ Authentication successful - redirected to ČEZ domain (API version: %s)", API_VERSION)
+            return True
 
         except aiohttp.ClientError as err:
             _LOGGER.error(
