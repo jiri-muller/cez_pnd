@@ -21,7 +21,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "disable-post-redirects-2025-12-28"
+API_VERSION = "debug-cookies-2025-12-28"
 _LOGGER.error("🔍 ČEZ PND API version: %s", API_VERSION)
 
 
@@ -218,6 +218,10 @@ class CezPndApi:
 
         try:
             _LOGGER.error("📊 Fetching data for assembly %s (API version: %s)", id_assembly, API_VERSION)
+            _LOGGER.error("🍪 Session has %d cookies (API version: %s)", len(session.cookie_jar), API_VERSION)
+            for cookie in session.cookie_jar:
+                _LOGGER.error("🍪 Cookie: %s for domain %s", cookie.key, cookie.get('domain', 'no-domain'))
+
             async with session.post(
                 API_DATA_URL,
                 json=payload,
