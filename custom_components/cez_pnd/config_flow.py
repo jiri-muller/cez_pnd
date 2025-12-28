@@ -31,7 +31,12 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     api = CezPndApi(data[CONF_USERNAME], data[CONF_PASSWORD], data.get("device_id", DEFAULT_DEVICE_ID), hass)
 
     try:
-        await api.async_authenticate()
+        result = await api.async_authenticate()
+        if not result:
+            _LOGGER.error("Authentication failed: async_authenticate returned False")
+            raise InvalidAuth("Authentication failed")
+    except InvalidAuth:
+        raise
     except Exception as err:
         _LOGGER.error("Authentication failed: %s", err)
         raise InvalidAuth from err
