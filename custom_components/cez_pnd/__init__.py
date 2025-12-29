@@ -10,6 +10,7 @@ from homeassistant.components.recorder.statistics import (
     async_add_external_statistics,
     StatisticMetaData,
     StatisticData,
+    StatisticType,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform, UnitOfPower
@@ -158,6 +159,7 @@ async def async_write_power_history(hass: HomeAssistant, entity_id: str, measure
     metadata = StatisticMetaData(
         has_mean=True,
         has_sum=False,
+        mean_type=StatisticType.MEASUREMENT,
         name=entity_id.replace("sensor.cez_pnd_", "ČEZ PND ").replace("_", " ").title(),
         source=DOMAIN,
         statistic_id=statistic_id,
