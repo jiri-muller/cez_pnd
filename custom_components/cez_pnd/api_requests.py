@@ -20,7 +20,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v1.4.0-backfill"
+API_VERSION = "v1.5.0"
 _LOGGER.info("ČEZ PND API version: %s", API_VERSION)
 
 
