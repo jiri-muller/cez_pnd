@@ -149,8 +149,10 @@ async def async_write_power_history(hass: HomeAssistant, entity_id: str, measure
 
     _LOGGER.info(f"📊 Processing {len(measurements)} historical measurements for {entity_id}")
 
-    # Create statistic ID (using the entity_id)
-    statistic_id = entity_id
+    # Create statistic ID for external statistics (format: domain:unique_part)
+    # Remove "sensor." prefix and use format compatible with external statistics
+    unique_part = entity_id.replace("sensor.", "").replace("cez_pnd_", "")
+    statistic_id = f"{DOMAIN}:{unique_part}"
 
     # Define metadata for the statistics
     metadata = StatisticMetaData(
