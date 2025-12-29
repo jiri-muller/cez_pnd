@@ -1,0 +1,7 @@
+entity_id,state,last_changed
+sensor.cez_pnd_consumption_power,0.959,2025-12-29T09:38:19.199Z
+sensor.cez_pnd_consumption_power,unavailable,2025-12-29T09:48:15.621Z
+sensor.cez_pnd_consumption_power,,2025-12-29T09:48:15.647Z
+sensor.cez_pnd_consumption_power,0.959,2025-12-29T09:48:30.723Z
+sensor.cez_pnd_consumption_power,unavailable,2025-12-29T09:50:34.068Z
+sensor.cez_pnd_consumption_power,0.959,2025-12-29T09:50:38.291Z
