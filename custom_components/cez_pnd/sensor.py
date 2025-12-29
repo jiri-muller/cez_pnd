@@ -101,6 +101,7 @@ class CezPndEnergySensor(CoordinatorEntity, SensorEntity):
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_state_class = SensorStateClass.TOTAL
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_suggested_display_precision = 2  # Show 2 decimal places (e.g., 14.39)
 
     @property
     def native_value(self) -> float | None:
@@ -190,6 +191,7 @@ class CezPndPowerSensor(CoordinatorEntity, SensorEntity):
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
+        self._attr_suggested_display_precision = 3  # Show 3 decimal places (e.g., 0.959)
 
     @property
     def native_value(self) -> float | None:
@@ -218,20 +220,17 @@ class CezPndPowerSensor(CoordinatorEntity, SensorEntity):
         data = self.coordinator.data.get(self._sensor_type, {})
         measurements = data.get("measurements", [])
 
-        # Include last 10 measurements in attributes for graphing
-        recent_measurements = measurements[-10:] if len(measurements) > 10 else measurements
-
         return {
             "latest_timestamp": data.get("latest_timestamp", ""),
-            "min": data.get("min", 0.0),
-            "max": data.get("max", 0.0),
-            "total_energy": data.get("total", 0.0),
+            "min_today": data.get("min", 0.0),
+            "max_today": data.get("max", 0.0),
+            "total_energy_today": data.get("total", 0.0),
             "meter_name": data.get("name", ""),
             "date_from": data.get("date_from", ""),
             "date_to": data.get("date_to", ""),
             "measurement_count": len(measurements),
-            "recent_measurements": recent_measurements,
             "last_update": self.coordinator.data.get("last_update", ""),
+            "unit": data.get("unit", "kW"),
         }
 
     @property
