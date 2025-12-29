@@ -20,6 +20,17 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import dt as dt_util
 
+try:
+    from homeassistant_historical_sensor import (
+        HistoricalSensor,
+        HistoricalState,
+        PollUpdateMixin,
+    )
+    HISTORICAL_SENSOR_AVAILABLE = True
+except ImportError:
+    HISTORICAL_SENSOR_AVAILABLE = False
+    _LOGGER.warning("homeassistant-historical-sensor not available, historical sensors disabled")
+
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +88,26 @@ async def async_setup_entry(
             "mdi:solar-power",
         ),
     ]
+
+    # Add historical sensors if module is available
+    if HISTORICAL_SENSOR_AVAILABLE:
+        sensors.extend([
+            CezPndHistoricalPowerSensor(
+                coordinator,
+                config_entry,
+                "consumption_power",
+                "Consumption Power History",
+                "mdi:chart-line",
+            ),
+            CezPndHistoricalPowerSensor(
+                coordinator,
+                config_entry,
+                "production_power",
+                "Production Power History",
+                "mdi:chart-line",
+            ),
+        ])
+        _LOGGER.info("Historical sensors enabled for 15-minute power data")
 
     async_add_entities(sensors)
 
@@ -241,3 +272,96 @@ class CezPndPowerSensor(CoordinatorEntity, SensorEntity):
             and self.coordinator.data is not None
             and self._sensor_type in self.coordinator.data
         )
+
+
+
+# Historical sensor implementation (requires homeassistant-historical-sensor)
+if HISTORICAL_SENSOR_AVAILABLE:
+    class CezPndHistoricalPowerSensor(PollUpdateMixin, HistoricalSensor, CoordinatorEntity, SensorEntity):
+        """Historical power sensor showing all 15-minute measurements in regular history graph."""
+
+        def __init__(
+            self,
+            coordinator: DataUpdateCoordinator,
+            config_entry: ConfigEntry,
+            sensor_type: str,
+            name: str,
+            icon: str,
+        ) -> None:
+            """Initialize the historical sensor."""
+            CoordinatorEntity.__init__(self, coordinator)
+            self._sensor_type = sensor_type
+            self._attr_name = f"ČEZ PND {name}"
+            self._attr_unique_id = f"{config_entry.entry_id}_{sensor_type}_historical"
+            self._attr_icon = icon
+            self._attr_device_class = SensorDeviceClass.POWER
+            # Note: No state_class - historical sensors dont use automatic statistics
+            self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
+            self._attr_suggested_display_precision = 3
+            self._attr_historical_states = []
+
+        async def async_update_historical(self) -> None:
+            """Update historical states from coordinator data."""
+            if self.coordinator.data is None:
+                _LOGGER.debug(f"Historical sensor {self._sensor_type}: No coordinator data")
+                return
+
+            data = self.coordinator.data.get(self._sensor_type, {})
+            measurements = data.get("measurements", [])
+
+            if not measurements:
+                _LOGGER.debug(f"Historical sensor {self._sensor_type}: No measurements")
+                return
+
+            _LOGGER.info(f"📊 Historical sensor {self._sensor_type}: Processing {len(measurements)} measurements")
+
+            # Convert measurements to HistoricalState objects
+            historical_states = []
+            for measurement in measurements:
+                timestamp_str = measurement.get("timestamp", "")
+                value = measurement.get("value", 0.0)
+
+                if not timestamp_str:
+                    continue
+
+                try:
+                    # Parse timestamp (format: "29.12.2025 04:30")
+                    dt = datetime.strptime(timestamp_str, "%d.%m.%Y %H:%M")
+                    # Make timezone aware
+                    dt = dt_util.as_local(dt)
+
+                    # Create historical state
+                    hist_state = HistoricalState(
+                        state=value,
+                        dt=dt,
+                    )
+                    historical_states.append(hist_state)
+
+                except (ValueError, TypeError) as err:
+                    _LOGGER.warning(f"Failed to parse timestamp \"{timestamp_str}\": {err}")
+                    continue
+
+            self._attr_historical_states = historical_states
+            _LOGGER.info(
+                f"✅ Historical sensor {self._sensor_type}: Prepared {len(historical_states)} states "
+                f"from {measurements[0][\"timestamp\"]} to {measurements[-1][\"timestamp\"]}"
+            )
+
+        @property
+        def extra_state_attributes(self) -> dict[str, Any]:
+            """Return additional attributes."""
+            if self.coordinator.data is None:
+                return {}
+
+            data = self.coordinator.data.get(self._sensor_type, {})
+            measurements = data.get("measurements", [])
+
+            return {
+                "measurement_count": len(measurements),
+                "date_from": data.get("date_from", ""),
+                "date_to": data.get("date_to", ""),
+                "meter_name": data.get("name", ""),
+                "unit": data.get("unit", "kW"),
+                "last_update": self.coordinator.data.get("last_update", ""),
+            }
+
