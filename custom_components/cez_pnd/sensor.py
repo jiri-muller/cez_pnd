@@ -20,6 +20,10 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.util import dt as dt_util
 
+from .const import DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
 try:
     from homeassistant_historical_sensor import (
         HistoricalSensor,
@@ -30,10 +34,6 @@ try:
 except ImportError:
     HISTORICAL_SENSOR_AVAILABLE = False
     _LOGGER.warning("homeassistant-historical-sensor not available, historical sensors disabled")
-
-from .const import DOMAIN
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
