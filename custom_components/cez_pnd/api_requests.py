@@ -20,7 +20,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v1.3.0-historical"
+API_VERSION = "v1.4.0-backfill"
 _LOGGER.info("ČEZ PND API version: %s", API_VERSION)
 
 
@@ -180,6 +180,54 @@ class CezPndApi:
         )
 
         return result
+
+    def get_historical_data(self, days_back: int = 30) -> dict[str, Any]:
+        """Fetch historical power data for backfill (multiple days)."""
+        # Ensure we're authenticated first
+        if not self._authenticated:
+            _LOGGER.debug("Not authenticated, authenticating...")
+            if not self.authenticate():
+                raise Exception("Authentication failed")
+
+        now = datetime.now()
+        date_format = "%d.%m.%Y %H:%M"
+
+        # Calculate date range (going back N days)
+        end_date = now - timedelta(days=1)  # Yesterday (today's data may be incomplete)
+        start_date = end_date - timedelta(days=days_back - 1)
+
+        _LOGGER.info(
+            f"🔄 Backfilling historical power data from {start_date.strftime('%d.%m.%Y')} "
+            f"to {end_date.strftime('%d.%m.%Y')} ({days_back} days)"
+        )
+
+        # Fetch historical power data for the entire period
+        interval_from = start_date.replace(hour=0, minute=0, second=0).strftime(date_format)
+        interval_to = end_date.replace(hour=23, minute=59, second=59).strftime(date_format)
+
+        consumption_power = self._fetch_power_data(
+            ID_ASSEMBLY_CONSUMPTION_POWER,
+            interval_from,
+            interval_to,
+        )
+        production_power = self._fetch_power_data(
+            ID_ASSEMBLY_PRODUCTION_POWER,
+            interval_from,
+            interval_to,
+        )
+
+        _LOGGER.info(
+            f"✅ Backfill complete: consumption {len(consumption_power.get('measurements', []))} points, "
+            f"production {len(production_power.get('measurements', []))} points"
+        )
+
+        return {
+            "consumption_power": consumption_power,
+            "production_power": production_power,
+            "backfill_start": start_date.isoformat(),
+            "backfill_end": end_date.isoformat(),
+            "last_update": datetime.now().isoformat(),
+        }
 
     def _fetch_data(
         self,

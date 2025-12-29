@@ -1,6 +1,7 @@
 """The ČEZ Distribuce PND integration using requests."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta
 
@@ -95,6 +96,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.warning("Could not find production_power entity")
 
     coordinator.async_add_listener(lambda: hass.async_create_task(async_write_historical_states()))
+
+    # Perform one-time backfill of historical data if this is first setup
+    backfill_done_key = f"{entry.entry_id}_backfill_done"
+    if not hass.data[DOMAIN].get(backfill_done_key, False):
+        _LOGGER.info("🔄 Starting one-time historical data backfill (30 days)")
+
+        async def async_backfill():
+            """Backfill historical power data."""
+            try:
+                # Fetch 30 days of historical data
+                historical_data = await hass.async_add_executor_job(api.get_historical_data, 30)
+
+                # Write historical data for consumption
+                consumption_data = historical_data.get("consumption_power", {})
+                if consumption_data.get("measurements"):
+                    entity_id = hass.states.async_entity_ids("sensor")
+                    consumption_entity = next((e for e in entity_id if "consumption_power" in e.lower()), None)
+                    if consumption_entity:
+                        await async_write_power_history(hass, consumption_entity, consumption_data["measurements"])
+
+                # Write historical data for production
+                production_data = historical_data.get("production_power", {})
+                if production_data.get("measurements"):
+                    entity_id = hass.states.async_entity_ids("sensor")
+                    production_entity = next((e for e in entity_id if "production_power" in e.lower()), None)
+                    if production_entity:
+                        await async_write_power_history(hass, production_entity, production_data["measurements"])
+
+                # Mark backfill as done
+                hass.data[DOMAIN][backfill_done_key] = True
+                _LOGGER.info("✅ Historical data backfill completed successfully")
+
+            except Exception as err:
+                _LOGGER.error(f"Failed to backfill historical data: {err}")
+
+        # Run backfill in background after a short delay (let sensors initialize first)
+        async def delayed_backfill():
+            await asyncio.sleep(10)  # Wait 10 seconds for sensors to be ready
+            await async_backfill()
+
+        hass.async_create_task(delayed_backfill())
 
     return True
 
