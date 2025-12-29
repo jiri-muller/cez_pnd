@@ -177,7 +177,15 @@ async def async_write_power_history(hass: HomeAssistant, entity_id: str, measure
 
         try:
             # Parse timestamp (format: "29.12.2025 04:30")
-            timestamp = datetime.strptime(timestamp_str, "%d.%m.%Y %H:%M")
+            # Handle special case: 24:00 means midnight of next day
+            if " 24:00" in timestamp_str:
+                timestamp_str = timestamp_str.replace(" 24:00", " 00:00")
+                timestamp = datetime.strptime(timestamp_str, "%d.%m.%Y %H:%M")
+                # Add one day since 24:00 is midnight of next day
+                timestamp = timestamp + timedelta(days=1)
+            else:
+                timestamp = datetime.strptime(timestamp_str, "%d.%m.%Y %H:%M")
+
             # Make timezone aware and convert to UTC
             timestamp_utc = dt_util.as_utc(dt_util.as_local(timestamp))
 

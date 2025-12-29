@@ -326,7 +326,17 @@ if HISTORICAL_SENSOR_AVAILABLE:
 
                 try:
                     # Parse timestamp (format: "29.12.2025 04:30")
-                    dt = datetime.strptime(timestamp_str, "%d.%m.%Y %H:%M")
+                    # Handle special case: 24:00 means midnight of next day
+                    ts = timestamp_str
+                    if " 24:00" in ts:
+                        ts = ts.replace(" 24:00", " 00:00")
+                        dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
+                        # Add one day since 24:00 is midnight of next day
+                        from datetime import timedelta
+                        dt = dt + timedelta(days=1)
+                    else:
+                        dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
+
                     # Make timezone aware
                     dt = dt_util.as_local(dt)
 
