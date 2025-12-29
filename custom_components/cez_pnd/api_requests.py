@@ -20,7 +20,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v1.6.0"
+API_VERSION = "v1.7.0"
 _LOGGER.info("ČEZ PND API version: %s", API_VERSION)
 
 
@@ -159,6 +159,12 @@ class CezPndApi:
         consumption_power = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION_POWER, today_from, today_to)
         production_power = self._fetch_power_data(ID_ASSEMBLY_PRODUCTION_POWER, today_from, today_to)
 
+        # Fetch 7-day historical consumption data (including today)
+        week_start = today - timedelta(days=6)  # 6 days ago + today = 7 days
+        week_from = week_start.strftime(date_format)
+        week_to = now.replace(hour=23, minute=59, second=59).strftime(date_format)
+        consumption_week = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION, week_from, week_to)
+
         result = {
             "consumption_today": consumption_today,
             "consumption_yesterday": consumption_yesterday,
@@ -166,6 +172,7 @@ class CezPndApi:
             "production_yesterday": production_yesterday,
             "consumption_power": consumption_power,
             "production_power": production_power,
+            "consumption_week": consumption_week,
             "last_update": datetime.now().isoformat(),
         }
 
