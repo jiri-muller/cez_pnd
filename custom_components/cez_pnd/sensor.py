@@ -338,14 +338,18 @@ if HISTORICAL_SENSOR_AVAILABLE:
                     historical_states.append(hist_state)
 
                 except (ValueError, TypeError) as err:
-                    _LOGGER.warning(f"Failed to parse timestamp \"{timestamp_str}\": {err}")
+                    _LOGGER.warning(f"Failed to parse timestamp '{timestamp_str}': {err}")
                     continue
 
             self._attr_historical_states = historical_states
-            _LOGGER.info(
-                f"✅ Historical sensor {self._sensor_type}: Prepared {len(historical_states)} states "
-                f"from {measurements[0][\"timestamp\"]} to {measurements[-1][\"timestamp\"]}"
-            )
+
+            if historical_states:
+                first_ts = measurements[0].get("timestamp", "")
+                last_ts = measurements[-1].get("timestamp", "")
+                _LOGGER.info(
+                    f"✅ Historical sensor {self._sensor_type}: Prepared {len(historical_states)} states "
+                    f"from {first_ts} to {last_ts}"
+                )
 
         @property
         def extra_state_attributes(self) -> dict[str, Any]:
