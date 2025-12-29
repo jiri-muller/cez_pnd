@@ -118,7 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         entity = hass.data["entity_components"]["sensor"].get_entity(consumption_hist_entity)
                         if entity and hasattr(entity, "_attr_historical_states"):
                             entity._attr_historical_states = historical_states
-                            await entity.async_update_ha_state()
+                            await entity.async_write_ha_state()
                             _LOGGER.info(f"✅ Backfilled {len(historical_states)} consumption states")
 
                     # Process production power backfill
@@ -156,7 +156,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                         entity = hass.data["entity_components"]["sensor"].get_entity(production_hist_entity)
                         if entity and hasattr(entity, "_attr_historical_states"):
                             entity._attr_historical_states = historical_states
-                            await entity.async_update_ha_state()
+                            await entity.async_write_ha_state()
                             _LOGGER.info(f"✅ Backfilled {len(historical_states)} production states")
 
                 except ImportError:
