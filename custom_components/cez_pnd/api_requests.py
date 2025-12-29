@@ -13,12 +13,14 @@ from .const import (
     API_DATA_URL,
     ID_ASSEMBLY_CONSUMPTION,
     ID_ASSEMBLY_PRODUCTION,
+    ID_ASSEMBLY_CONSUMPTION_POWER,
+    ID_ASSEMBLY_PRODUCTION_POWER,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 # Version identifier for debugging
-API_VERSION = "v1.0.0"
+API_VERSION = "v1.1.0-power"
 _LOGGER.info("ČEZ PND API version: %s", API_VERSION)
 
 
@@ -153,20 +155,28 @@ class CezPndApi:
         consumption_yesterday = self._fetch_data(ID_ASSEMBLY_CONSUMPTION, yesterday_from, yesterday_to)
         production_yesterday = self._fetch_data(ID_ASSEMBLY_PRODUCTION, yesterday_from, yesterday_to)
 
+        # Fetch today's 15-minute power data (from midnight to now)
+        consumption_power = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION_POWER, today_from, today_to)
+        production_power = self._fetch_power_data(ID_ASSEMBLY_PRODUCTION_POWER, today_from, today_to)
+
         result = {
             "consumption_today": consumption_today,
             "consumption_yesterday": consumption_yesterday,
             "production_today": production_today,
             "production_yesterday": production_yesterday,
+            "consumption_power": consumption_power,
+            "production_power": production_power,
             "last_update": datetime.now().isoformat(),
         }
 
         _LOGGER.info(
-            "Data fetched: today cons=%s prod=%s, yesterday cons=%s prod=%s",
+            "Data fetched: today cons=%s prod=%s, yesterday cons=%s prod=%s, power cons=%s prod=%s",
             consumption_today.get("total", "N/A"),
             production_today.get("total", "N/A"),
             consumption_yesterday.get("total", "N/A"),
             production_yesterday.get("total", "N/A"),
+            consumption_power.get("current", "N/A"),
+            production_power.get("current", "N/A"),
         )
 
         return result
@@ -264,6 +274,120 @@ class CezPndApi:
         except Exception as err:
             _LOGGER.error(
                 "Error fetching data for assembly %s: %s (type: %s)",
+                id_assembly,
+                err,
+                type(err).__name__,
+            )
+            raise
+
+    def _fetch_power_data(
+        self,
+        id_assembly: int,
+        interval_from: str,
+        interval_to: str,
+    ) -> dict[str, Any]:
+        """Fetch 15-minute power data for a specific assembly ID."""
+        payload = {
+            "format": "chart",
+            "idAssembly": id_assembly,
+            "idDeviceSet": self.device_id,
+            "intervalFrom": interval_from,
+            "intervalTo": interval_to,
+            "compareFrom": None,
+            "opmId": None,
+            "electrometerId": None,
+        }
+
+        try:
+            _LOGGER.debug("Fetching power data for assembly %s", id_assembly)
+            response = self.session.post(
+                API_DATA_URL,
+                json=payload,
+                allow_redirects=False,
+            )
+
+            _LOGGER.debug("Response status: %s, URL: %s", response.status_code, response.url)
+
+            if response.status_code == 302 or response.status_code == 401:
+                # Session expired, re-authenticate
+                _LOGGER.info("Session expired, re-authenticating")
+                self._authenticated = False
+                if not self.authenticate():
+                    raise Exception("Re-authentication failed")
+
+                # Retry the request
+                _LOGGER.debug("Retrying power data fetch after re-authentication")
+                response = self.session.post(
+                    API_DATA_URL,
+                    json=payload,
+                    allow_redirects=False,
+                )
+
+            response.raise_for_status()
+            data = response.json()
+
+            _LOGGER.debug("Received power data successfully")
+
+            # Extract 15-minute interval data
+            if data.get("hasData") and data.get("series"):
+                series = data["series"][0]
+                stats = data["seriesStats"][0] if data.get("seriesStats") else {}
+                raw_data = series.get("data", [])
+
+                # Filter out invalid data points (status != "naměřená data OK")
+                valid_data = []
+                for point in raw_data:
+                    if len(point) >= 3 and point[2] == "naměřená data OK":
+                        valid_data.append({
+                            "timestamp": point[0],
+                            "value": float(point[1]),
+                        })
+
+                # Get the latest valid measurement
+                current_power = 0.0
+                latest_timestamp = ""
+                if valid_data:
+                    latest = valid_data[-1]
+                    current_power = latest["value"]
+                    latest_timestamp = latest["timestamp"]
+
+                return {
+                    "current": current_power,
+                    "latest_timestamp": latest_timestamp,
+                    "measurements": valid_data,
+                    "total": self._parse_czech_number(stats.get("total", "0")),
+                    "min": self._parse_czech_number(stats.get("min", "0")),
+                    "max": self._parse_czech_number(stats.get("max", "0")),
+                    "name": series.get("name", ""),
+                    "unit": data.get("unitY", "kW"),
+                    "date_from": stats.get("dateFrom", ""),
+                    "date_to": stats.get("dateTo", ""),
+                }
+
+            return {
+                "current": 0.0,
+                "latest_timestamp": "",
+                "measurements": [],
+                "total": 0.0,
+                "min": 0.0,
+                "max": 0.0,
+                "name": "",
+                "unit": "kW",
+                "date_from": "",
+                "date_to": "",
+            }
+
+        except requests.RequestException as err:
+            _LOGGER.error(
+                "Network error fetching power data for assembly %s: %s (type: %s)",
+                id_assembly,
+                err,
+                type(err).__name__,
+            )
+            raise
+        except Exception as err:
+            _LOGGER.error(
+                "Error fetching power data for assembly %s: %s (type: %s)",
                 id_assembly,
                 err,
                 type(err).__name__,
