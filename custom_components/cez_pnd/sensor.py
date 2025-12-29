@@ -336,6 +336,7 @@ if HISTORICAL_SENSOR_AVAILABLE:
             _LOGGER.info(f"📊 Historical energy sensor {self._sensor_type}: Processing {len(measurements)} measurements")
 
             # Convert measurements to HistoricalState objects
+            # For each day, create two data points: start of day (0) and end of day (total)
             historical_states = []
             for measurement in measurements:
                 timestamp_str = measurement.get("timestamp", "")
@@ -351,19 +352,29 @@ if HISTORICAL_SENSOR_AVAILABLE:
                     if " 24:00" in ts:
                         # Replace 24:00 with 23:59 to keep the value on the correct day
                         ts = ts.replace(" 24:00", " 23:59")
-                        dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
+                        dt_end = datetime.strptime(ts, "%d.%m.%Y %H:%M")
                     else:
-                        dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
+                        dt_end = datetime.strptime(ts, "%d.%m.%Y %H:%M")
 
                     # Make timezone aware
-                    dt = dt_util.as_local(dt)
+                    dt_end = dt_util.as_local(dt_end)
 
-                    # Create historical state
-                    hist_state = HistoricalState(
-                        state=value,
-                        dt=dt,
+                    # Create start of day timestamp (00:00)
+                    dt_start = dt_end.replace(hour=0, minute=0, second=0, microsecond=0)
+
+                    # Add state at start of day (0 kWh) - day begins with no consumption
+                    hist_state_start = HistoricalState(
+                        state=0.0,
+                        dt=dt_start,
                     )
-                    historical_states.append(hist_state)
+                    historical_states.append(hist_state_start)
+
+                    # Add state at end of day (total kWh for that day)
+                    hist_state_end = HistoricalState(
+                        state=value,
+                        dt=dt_end,
+                    )
+                    historical_states.append(hist_state_end)
 
                 except (ValueError, TypeError) as err:
                     _LOGGER.warning(f"Failed to parse timestamp '{timestamp_str}': {err}")
