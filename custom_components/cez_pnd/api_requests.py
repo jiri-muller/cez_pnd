@@ -159,10 +159,12 @@ class CezPndApi:
         consumption_power = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION_POWER, today_from, today_to)
         production_power = self._fetch_power_data(ID_ASSEMBLY_PRODUCTION_POWER, today_from, today_to)
 
-        # Fetch 7-day historical consumption data (including today)
-        week_start = today - timedelta(days=6)  # 6 days ago + today = 7 days
+        # Fetch 7-day historical consumption data (7 complete days in the past)
+        # Start from 7 days ago (not including today, as today's data is incomplete)
+        week_start = today - timedelta(days=7)
+        week_end = today - timedelta(days=1)  # Yesterday (last complete day)
         week_from = week_start.strftime(date_format)
-        week_to = now.replace(hour=23, minute=59, second=59).strftime(date_format)
+        week_to = week_end.replace(hour=23, minute=59, second=59).strftime(date_format)
         consumption_week = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION, week_from, week_to)
 
         result = {
