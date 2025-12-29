@@ -160,10 +160,12 @@ class CezPndApi:
         production_power = self._fetch_power_data(ID_ASSEMBLY_PRODUCTION_POWER, today_from, today_to)
 
         # Fetch 7-day historical consumption data (including today)
-        # Start from 7 days ago to now (today's data will be partial but updates throughout the day)
-        week_start = today - timedelta(days=7)
+        # API expects intervalFrom as start of first day, intervalTo as start of next day after last day
+        # Example: For Dec 23-29, use intervalFrom="23.12.2025 00:00", intervalTo="30.12.2025 00:00"
+        week_start = today - timedelta(days=6)  # 6 days ago + today = 7 days
+        week_end = today + timedelta(days=1)  # Tomorrow (for intervalTo)
         week_from = week_start.strftime(date_format)
-        week_to = now.replace(hour=23, minute=59, second=59).strftime(date_format)
+        week_to = week_end.strftime(date_format)
         consumption_week = self._fetch_power_data(ID_ASSEMBLY_CONSUMPTION, week_from, week_to)
 
         result = {
