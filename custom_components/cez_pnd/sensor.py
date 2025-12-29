@@ -1,6 +1,7 @@
 """Sensor platform for ČEZ Distribuce PND integration."""
 from __future__ import annotations
 
+from datetime import datetime
 import logging
 from typing import Any
 
@@ -17,6 +18,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     DataUpdateCoordinator,
 )
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 
@@ -126,3 +128,29 @@ class CezPndSensor(CoordinatorEntity, SensorEntity):
             and self.coordinator.data is not None
             and self._sensor_type in self.coordinator.data
         )
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Return the time when the sensor was last reset (start of measurement period)."""
+        if self.coordinator.data is None:
+            return None
+
+        data = self.coordinator.data.get(self._sensor_type, {})
+        date_from_str = data.get("date_from", "")
+
+        if not date_from_str:
+            return None
+
+        try:
+            # Parse the date_from string (format: "28.12.2025")
+            date_obj = datetime.strptime(date_from_str, "%d.%m.%Y")
+            # Convert to timezone-aware datetime at midnight
+            return dt_util.start_of_local_day(dt_util.as_local(date_obj))
+        except (ValueError, TypeError) as err:
+            _LOGGER.warning(
+                "Failed to parse date_from '%s' for sensor %s: %s",
+                date_from_str,
+                self._sensor_type,
+                err,
+            )
+            return None
