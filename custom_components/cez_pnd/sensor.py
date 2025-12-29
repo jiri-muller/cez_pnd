@@ -245,15 +245,13 @@ if HISTORICAL_SENSOR_AVAILABLE:
                     continue
 
                 try:
-                    # Parse timestamp (format: "29.12.2025 04:30")
-                    # Handle special case: 24:00 means midnight of next day
+                    # Parse timestamp (format: "29.12.2025 04:30" or "27.12.2025 24:00")
+                    # 24:00 on day X represents end of day X (23:59)
                     ts = timestamp_str
                     if " 24:00" in ts:
-                        ts = ts.replace(" 24:00", " 00:00")
+                        # Replace 24:00 with 23:59 to keep the value on the correct day
+                        ts = ts.replace(" 24:00", " 23:59")
                         dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
-                        # Add one day since 24:00 is midnight of next day
-                        from datetime import timedelta
-                        dt = dt + timedelta(days=1)
                     else:
                         dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
 
@@ -347,13 +345,13 @@ if HISTORICAL_SENSOR_AVAILABLE:
                     continue
 
                 try:
-                    # Parse timestamp (format: "29.12.2025 04:30")
-                    # Handle special case: 24:00 means midnight of next day
+                    # Parse timestamp (format: "29.12.2025 04:30" or "27.12.2025 24:00")
+                    # For energy data: 24:00 means end of day, keep it on the same day
                     ts = timestamp_str
                     if " 24:00" in ts:
-                        ts = ts.replace(" 24:00", " 00:00")
+                        # Replace 24:00 with 23:59 to keep the value on the correct day
+                        ts = ts.replace(" 24:00", " 23:59")
                         dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
-                        dt = dt + timedelta(days=1)
                     else:
                         dt = datetime.strptime(ts, "%d.%m.%Y %H:%M")
 
